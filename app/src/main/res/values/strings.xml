@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">MLC Converter</string>
+    <string name="market_rates_title">Tasas del Mercado Informal</string>
+    <string name="currency_selector_label">Moneda: %1$s</string>
+    <string name="amount_label">Monto</string>
+    <string name="result_label">Resultado</string>
+    <string name="about_title">Acerca de</string>
+    <string name="about_description_1">Esta aplicación muestra las tasas de cambio del mercado informal en Cuba.</string>
+    <string name="about_description_2">Los datos se actualizan periódicamente desde fuentes externas.</string>
+    <string name="close_button">Cerrar</string>
+    <string name="retry_button">Reintentar</string>
+    <string name="no_data_error">No se encontraron datos</string>
+    <string name="unknown_error">Error al cargar datos</string>
 </resources>

@@ -18,9 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -37,25 +39,48 @@ fun CoinScreen(
 ) {
     val uiState by coinViewModel.uiState.collectAsState()
     val isDarkTheme by coinViewModel.isDarkTheme.collectAsState()
+    val coinSelected by coinViewModel.coinSelected.collectAsState()
+    val valorText by coinViewModel.value.collectAsState()
+
+    CoinScreenContent(
+        uiState = uiState,
+        isDarkTheme = isDarkTheme,
+        coinSelected = coinSelected,
+        valorText = valorText,
+        onToggleTheme = { coinViewModel.toggleTheme(it) },
+        onRetry = { coinViewModel.getCoins() },
+        onCoinSelected = { coinViewModel.updateCoinSelected(it) }
+    )
+}
+
+@Composable
+fun CoinScreenContent(
+    uiState: CoinUiState,
+    isDarkTheme: Boolean?,
+    coinSelected: String,
+    valorText: Double,
+    onToggleTheme: (Boolean?) -> Unit,
+    onRetry: () -> Unit,
+    onCoinSelected: (String) -> Unit
+) {
     val systemDark = isSystemInDarkTheme()
     val actualDark = isDarkTheme ?: systemDark
 
     MLCConvertrerTheme(darkTheme = actualDark) {
         val showDialog = remember { mutableStateOf(false) }
-        val coinSelected by coinViewModel.coinSelected.collectAsState()
         var isCupToForeign by remember { mutableStateOf(true) }
         var resultado by remember { mutableStateOf(0.0) }
         var texto by remember { mutableStateOf(TextFieldValue("")) }
-        val valorText by coinViewModel.value.collectAsState()
 
         if (showDialog.value) {
             InfoDialog(setShowDialog = { showDialog.value = it })
         }
 
         Scaffold(
+            modifier = Modifier.systemBarsPadding(),
             topBar = {
                 TopAppBar(
-                    title = { Text("MLC Converter", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
                     backgroundColor = MaterialTheme.colors.surface,
                     contentColor = MaterialTheme.colors.onSurface,
                     elevation = 0.dp,
@@ -66,18 +91,15 @@ fun CoinScreen(
                                 false -> null
                                 null -> true
                             }
-                            coinViewModel.toggleTheme(next)
+                            onToggleTheme(next)
                         }) {
                             Icon(
-                                painter = painterResource(
-                                    id = when (isDarkTheme) {
-                                        true -> R.drawable.ic_compare // Using existing drawable as fallback
-                                        false -> R.drawable.ic_compare
-                                        null -> R.drawable.ic_compare
-                                    }
-                                ),
-                                contentDescription = "Theme",
-                                modifier = Modifier.size(24.dp)
+                                imageVector = when (isDarkTheme) {
+                                    true -> Icons.Default.WbSunny
+                                    false -> Icons.Default.NightlightRound
+                                    null -> Icons.Default.SettingsBrightness
+                                },
+                                contentDescription = "Theme"
                             )
                         }
                         IconButton(onClick = { showDialog.value = true }) {
@@ -118,7 +140,7 @@ fun CoinScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    "Tasas del Mercado Informal",
+                                    stringResource(R.string.market_rates_title),
                                     style = MaterialTheme.typography.h6,
                                     color = MaterialTheme.colors.primary
                                 )
@@ -143,7 +165,7 @@ fun CoinScreen(
                                     is CoinUiState.Error -> {
                                         ErrorState(
                                             message = state.message,
-                                            onRetry = { coinViewModel.getCoins() }
+                                            onRetry = onRetry
                                         )
                                     }
                                 }
@@ -162,7 +184,7 @@ fun CoinScreen(
                                 modifier = Modifier.padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                CurrencySelector(coinViewModel, coinSelected)
+                                CurrencySelector(selected = coinSelected, onCoinSelected = onCoinSelected)
 
                                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -251,7 +273,7 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(message, color = MaterialTheme.colors.error)
         TextButton(onClick = onRetry) {
-            Text("Reintentar")
+            Text(stringResource(R.string.retry_button))
         }
     }
 }
@@ -309,7 +331,7 @@ fun ConverterSection(
         OutlinedTextField(
             value = texto,
             onValueChange = onTextoChange,
-            label = { Text("Monto") },
+            label = { Text(stringResource(R.string.amount_label)) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -331,7 +353,7 @@ fun ConverterSection(
                 modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Resultado", style = MaterialTheme.typography.caption)
+                Text(stringResource(R.string.result_label), style = MaterialTheme.typography.caption)
                 Text(
                     "$resultado ${if (isCupToForeign) coinSelected else "CUP"}",
                     style = MaterialTheme.typography.h4,
@@ -344,7 +366,7 @@ fun ConverterSection(
 }
 
 @Composable
-fun CurrencySelector(viewModel: CoinViewModel, selected: String) {
+fun CurrencySelector(selected: String, onCoinSelected: (String) -> Unit) {
     val options = listOf("EUR", "USD", "MLC")
     var expanded by remember { mutableStateOf(false) }
 
@@ -367,14 +389,14 @@ fun CurrencySelector(viewModel: CoinViewModel, selected: String) {
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Moneda: $selected")
+                Text(stringResource(R.string.currency_selector_label, selected))
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(onClick = {
-                    viewModel.updateCoinSelected(option)
+                    onCoinSelected(option)
                     expanded = false
                 }) {
                     Text(option)
@@ -398,23 +420,42 @@ fun InfoDialog(setShowDialog: (Boolean) -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Acerca de", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.about_title), style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
                     IconButton(onClick = { setShowDialog(false) }) {
                         Icon(Icons.Default.Close, contentDescription = null)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Esta aplicación muestra las tasas de cambio del mercado informal en Cuba.")
-                Text("Los datos se actualizan periódicamente desde fuentes externas.")
+                Text(stringResource(R.string.about_description_1))
+                Text(stringResource(R.string.about_description_2))
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = { setShowDialog(false) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cerrar")
+                    Text(stringResource(R.string.close_button))
                 }
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CoinScreenPreview() {
+    val sampleCoins = listOf(
+        CoinItem("350.0 CUP"),
+        CoinItem("340.0 CUP"),
+        CoinItem("330.0 CUP")
+    )
+    CoinScreenContent(
+        uiState = CoinUiState.Success(sampleCoins),
+        isDarkTheme = false,
+        coinSelected = "EUR",
+        valorText = 350.0,
+        onToggleTheme = {},
+        onRetry = {},
+        onCoinSelected = {}
+    )
 }
